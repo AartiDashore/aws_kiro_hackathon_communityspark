@@ -1,0 +1,68 @@
+<!--
+This is the base page of CommunitySpark UI Interface
+Author: Aarti Dashore
+Version: 1.0.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CommunitySpark{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar__logo">Community<span>Spark</span></a>
+  <div class="navbar__links">
+    <a href="/" id="nav-home">Discover</a>
+    <a href="/deals" id="nav-deals">🔥 Deals</a>
+    <a href="/register" class="btn-nav">List Your Business</a>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<div class="toast" id="toast"></div>
+
+<script>
+const _p = window.location.pathname;
+if (_p === '/') document.getElementById('nav-home').classList.add('active');
+if (_p === '/deals') document.getElementById('nav-deals').classList.add('active');
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast--${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function startCountdown(elId, expiresAt) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  function tick() {
+    const diff = new Date(expiresAt + 'Z') - new Date();
+    if (diff <= 0) { el.textContent = 'Expired'; el.style.color = 'var(--muted)'; return; }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    el.textContent = h > 0 ? `⏱ ${h}h ${m}m left` : `⏱ ${m}m ${s}s left`;
+    el.style.color = diff < 3600000 ? 'var(--primary)' : 'var(--accent)';
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
