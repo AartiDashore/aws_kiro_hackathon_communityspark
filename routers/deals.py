@@ -1,3 +1,8 @@
+"""
+Implementing businesses router with CRUD endpoints
+Author: Aarti Dashore
+Version: 1.0.0
+"""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from models import DealCreate
 from database import get_db
