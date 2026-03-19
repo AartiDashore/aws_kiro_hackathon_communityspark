@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}CommunitySpark — Flash Deals{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero__tag">⚡ Limited Time Only</div>
+  <h1 class="hero__title">Flash <em>Deals</em><br>from local businesses</h1>
+  <p class="hero__subtitle">Real discounts from minority-owned businesses. Timers tick live — grab them before they're gone.</p>
+</section>
+
+<div class="section-header">
+  <h2>Active Deals</h2>
+  <span id="deal-count" style="color:var(--muted);font-size:.9rem"></span>
+</div>
+
+<div class="deal-grid" id="deal-grid">
+  <div class="empty-state" style="grid-column:1/-1">
+    <div class="empty-state__icon">⏳</div><p>Loading deals…</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDeals() {
+  try {
+    const res  = await fetch('/api/deals');
+    const json = await res.json();
+    const deals = json.data || [];
+
+    const countEl = document.getElementById('deal-count');
+    countEl.textContent = deals.length ? `${deals.length} active deal${deals.length!==1?'s':''}` : '';
+
+    const grid = document.getElementById('deal-grid');
+    if (!deals.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">🏷️</div><p>No active deals right now. Check back soon!</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = deals.map(d => `
+      <div class="deal-card" id="deal-${d.id}">
+        <div class="deal-card__pct">${d.discount_percent}%<span> OFF</span></div>
+        <div class="deal-card__title">${escHtml(d.title)}</div>
+        <div class="deal-card__biz">
+          <a href="/business/${d.business_id}">${escHtml(d.business_name||'Local Business')}</a>
+          ${d.business_category ? ` · ${escHtml(d.business_category)}` : ''}
+        </div>
+        ${d.description ? `<div class="deal-card__desc">${escHtml(d.description)}</div>` : ''}
+        <div class="deal-card__footer">
+          <div class="deal-card__timer" id="timer-${d.id}">⏱ …</div>
+          <div class="deal-card__prices">
+            ${d.original_price != null ? `<div class="deal-card__original">$${Number(d.original_price).toFixed(2)}</div>` : ''}
+            ${d.deal_price    != null ? `<div class="deal-card__price">$${Number(d.deal_price).toFixed(2)}</div>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+
+    deals.forEach(d => startCountdown(`timer-${d.id}`, d.expires_at));
+  } catch {
+    document.getElementById('deal-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><p>Failed to load. Please refresh.</p></div>`;
+  }
+}
+
+loadDeals();
+</script>
+{% endblock %}
