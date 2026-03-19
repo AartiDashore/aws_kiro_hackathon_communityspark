@@ -1,3 +1,8 @@
+"""
+This is the FastAPI endpoint
+Author: Aarti Dashore
+Version: 1.0.0
+"""
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
