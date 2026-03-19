@@ -1,0 +1,114 @@
+<!--
+This is the registration form page of CommunitySpark UI Interface
+Author: Aarti Dashore
+Version: 1.0.0
+-->
+{% extends "base.html" %}
+{% block title %}CommunitySpark — Register Your Business{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <h1 class="form-page__title">List your business</h1>
+  <p class="form-page__sub">Join the community. Share your story. Reach customers who care.</p>
+
+  <form id="reg-form" novalidate>
+    <div class="form-section">
+      <h3>Basic Info</h3>
+      <div class="form-group">
+        <label>Business Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Mama's Kitchen" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category *</label>
+          <select id="f-cat" required>
+            <option value="">Select a category</option>
+            <option>Food &amp; Dining</option>
+            <option>Beauty &amp; Wellness</option>
+            <option>Retail</option>
+            <option>Services</option>
+            <option>Arts &amp; Culture</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" id="f-phone" placeholder="(555) 000-0000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Short Description *</label>
+        <input type="text" id="f-desc" placeholder="One sentence about what you offer" required>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Your Story</h3>
+      <div class="form-group">
+        <label>Tell the community about yourself *</label>
+        <textarea id="f-story" rows="5" placeholder="Why did you start this business? What drives you? What makes you special to this community?" required></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Location &amp; Contact</h3>
+      <div class="form-group">
+        <label>Address *</label>
+        <input type="text" id="f-addr" placeholder="123 Main St, City, State" required>
+      </div>
+      <div class="form-group">
+        <label>Website</label>
+        <input type="url" id="f-web" placeholder="https://yourbusiness.com">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn--primary btn--full" id="submit-btn">Submit My Business</button>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:.75rem;text-align:center">
+      Your listing goes live immediately so the community can find you right away.
+    </p>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('reg-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name  = document.getElementById('f-name').value.trim();
+  const cat   = document.getElementById('f-cat').value;
+  const desc  = document.getElementById('f-desc').value.trim();
+  const story = document.getElementById('f-story').value.trim();
+  const addr  = document.getElementById('f-addr').value.trim();
+
+  if (!name || !cat || !desc || !story || !addr) {
+    showToast('Please fill in all required fields.', 'error'); return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Submitting…'; btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/businesses', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name, category: cat, description: desc, story, address: addr,
+        phone:   document.getElementById('f-phone').value.trim() || null,
+        website: document.getElementById('f-web').value.trim()   || null,
+      })
+    });
+    const json = await res.json();
+    if (res.ok) {
+      showToast('🎉 Business listed! The community can find you now.', 'success');
+      e.target.reset();
+      setTimeout(() => window.location.href = `/business/${json.data.id}`, 2000);
+    } else {
+      showToast('Error: ' + (json.detail || 'Something went wrong.'), 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  } finally {
+    btn.textContent = 'Submit My Business'; btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}
