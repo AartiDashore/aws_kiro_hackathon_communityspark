@@ -1,3 +1,8 @@
+"""
+Implementing Pydantic data models for business, deals, and reviews
+Author: Aarti Dashore
+Version: 1.0.0
+"""
 from pydantic import BaseModel
 from typing import Optional
 
