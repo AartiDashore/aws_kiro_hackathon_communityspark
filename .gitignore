@@ -1,0 +1,35 @@
+# Python bytecode (compiled Python files)
+__pycache__/
+*.py[cod]
+*.so
+
+# Distribution/packaging
+*.egg-info/
+dist/
+wheels/
+build/
+
+# Virtual environments (huge, recreatable)
+venv/
+.venv/
+env/
+
+# Testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE settings (personal preferences)
+.vscode/
+.idea/
+*.swp
+
+# OS files (irrelevant to project)
+.DS_Store
+Thumbs.db
+*.db
+
+# Ignore all .env files but keep the .env.example
+.env
+*.env
+!.env.example
