@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}CommunitySpark — Discover Local Businesses{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero__tag">🌍 Support Your Community</div>
+  <h1 class="hero__title">Discover <em>minority-owned</em><br>businesses near you</h1>
+  <p class="hero__subtitle">Find authentic stories, real deals, and businesses that reflect your community.</p>
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search businesses…" autocomplete="off">
+    <button onclick="doSearch()">Search</button>
+  </div>
+</section>
+
+<div id="stats-bar" class="stats-bar" style="display:none">
+  <div class="stat"><span class="stat__num" id="stat-biz">0</span><span class="stat__label">Businesses</span></div>
+  <div class="stat"><span class="stat__num" id="stat-deals">—</span><span class="stat__label">Active Deals</span></div>
+  <div class="stat"><span class="stat__num" id="stat-cats">0</span><span class="stat__label">Categories</span></div>
+</div>
+
+<div class="filters">
+  <button class="filter-pill active" onclick="filterCat(this,'')">All</button>
+  <button class="filter-pill" onclick="filterCat(this,'Food &amp; Dining')">🍜 Food &amp; Dining</button>
+  <button class="filter-pill" onclick="filterCat(this,'Beauty &amp; Wellness')">💅 Beauty</button>
+  <button class="filter-pill" onclick="filterCat(this,'Retail')">🛍️ Retail</button>
+  <button class="filter-pill" onclick="filterCat(this,'Services')">🔧 Services</button>
+  <button class="filter-pill" onclick="filterCat(this,'Arts &amp; Culture')">🎨 Arts</button>
+</div>
+
+<div class="section-header">
+  <h2>Local Businesses</h2>
+  <a href="/deals">See all deals →</a>
+</div>
+
+<div class="business-grid" id="business-grid">
+  <div class="empty-state" style="grid-column:1/-1">
+    <div class="empty-state__icon">⏳</div><p>Loading…</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CAT_EMOJI = {'Food & Dining':'🍜','Beauty & Wellness':'💅','Retail':'🛍️','Services':'🔧','Arts & Culture':'🎨'};
+let currentCat = '';
+
+async function loadBusinesses(cat='', search='') {
+  const grid = document.getElementById('business-grid');
+  const params = new URLSearchParams();
+  if (cat)    params.append('category', cat);
+  if (search) params.append('search', search);
+
+  try {
+    const res  = await fetch('/api/businesses?' + params);
+    const json = await res.json();
+    const businesses = json.data || [];
+    renderGrid(businesses);
+    updateStats(businesses);
+  } catch {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><p>Failed to load. Please refresh.</p></div>';
+  }
+}
+
+function renderGrid(businesses) {
+  const grid = document.getElementById('business-grid');
+  if (!businesses.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">🏪</div><p>No businesses found. <a href="/register">Be the first!</a></p></div>`;
+    return;
+  }
+  grid.innerHTML = businesses.map(b => `
+    <a class="business-card" href="/business/${b.id}">
+      <div class="business-card__image">
+        ${b.image_url
+          ? `<img src="${escHtml(b.image_url)}" alt="${escHtml(b.name)}" loading="lazy">`
+          : `<div class="business-card__placeholder">${CAT_EMOJI[b.category]||'🏪'}</div>`}
+        <span class="business-card__cat">${escHtml(b.category)}</span>
+      </div>
+      <div class="business-card__body">
+        <div class="business-card__name">${escHtml(b.name)}</div>
+        <div class="business-card__desc">${escHtml(b.description||'')}</div>
+        <div class="business-card__footer">
+          <span class="business-card__addr">📍 ${escHtml(b.address)}</span>
+        </div>
+      </div>
+    </a>`).join('');
+}
+
+async function updateStats(businesses) {
+  document.getElementById('stat-biz').textContent = businesses.length;
+  const cats = new Set(businesses.map(b => b.category));
+  document.getElementById('stat-cats').textContent = cats.size;
+  try {
+    const res  = await fetch('/api/deals');
+    const json = await res.json();
+    document.getElementById('stat-deals').textContent = (json.data||[]).length;
+  } catch { document.getElementById('stat-deals').textContent = '—'; }
+  document.getElementById('stats-bar').style.display = 'flex';
+}
+
+function filterCat(el, cat) {
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  currentCat = cat;
+  loadBusinesses(cat, document.getElementById('search-input').value.trim());
+}
+
+function doSearch() {
+  loadBusinesses(currentCat, document.getElementById('search-input').value.trim());
+}
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+loadBusinesses();
+</script>
+{% endblock %}
