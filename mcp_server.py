@@ -15,6 +15,7 @@ And the model is pulled: `ollama pull llama3`
 import asyncio
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(__file__))
 
 from mcp.server.fastmcp import FastMCP
@@ -60,7 +61,7 @@ Write in first person. Be genuine, personal, and community-focused. No clichés.
 Business name: {business_name}
 Category: {category}
 What they sell/offer: {what_you_sell}
-Owner background: {your_background or 'not provided'}
+Owner background: {your_background or "not provided"}
 Neighborhood/City: {neighborhood}
 
 Output only the 3-sentence story. Nothing else."""
@@ -88,10 +89,12 @@ def find_matching_businesses(user_request: str) -> str:
     if not businesses:
         return "No businesses are currently listed on CommunitySpark. Check back soon!"
 
-    businesses_text = "\n".join([
-        f"ID:{b['id']} | {b['name']} | Category: {b['category']} | {b['description']} | {b['address']}"
-        for b in businesses
-    ])
+    businesses_text = "\n".join(
+        [
+            f"ID:{b['id']} | {b['name']} | Category: {b['category']} | {b['description']} | {b['address']}"
+            for b in businesses
+        ]
+    )
 
     prompt = f"""You are a friendly community guide for CommunitySpark, a platform for minority-owned local businesses.
 
