@@ -1,0 +1,13 @@
+{
+  "name": "Ruff Lint on Save",
+  "version": "1.0.0",
+  "description": "Run ruff check on any Python file when saved, and report issues inline.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["*.py"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Python file was just saved. Run `ruff check .` and `ruff format --check .` and report any lint or formatting issues found. If there are none, confirm the file is clean."
+  }
+}
