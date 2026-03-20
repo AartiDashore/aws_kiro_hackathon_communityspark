@@ -21,13 +21,13 @@ CommunitySpark is a local business discovery platform for minority-owned and com
 - `models.py` — Pydantic request models
 - `database.py` — SQLite init, schema, seed data
 - `mcp_server.py` — MCP server exposing AI agents as Kiro tools
-- `routers/businesses.py` — business CRUD + image upload/delete
-- `routers/deals.py` — flash deal creation, editing, expiry
+- `routers/businesses.py` — business CRUD (create, read, update, delete, image upload/delete)
+- `routers/deals.py` — flash deal creation, editing, time extension, and expiry
 - `routers/reviews.py` — review submission
 - `routers/agents.py` — AI agent HTTP endpoints (story writer + matchmaker)
 - `templates/` — Jinja2 HTML pages
 - `static/css/styles.css` — all styles
-- `static/uploads/` — uploaded business photos (auto-created, not committed)
+- `static/uploads/` — uploaded business photos (auto-created, not committed to git)
 
 ## Coding conventions
 
@@ -36,33 +36,7 @@ CommunitySpark is a local business discovery platform for minority-owned and com
 - Ruff is the linter and formatter — run `ruff check .` and `ruff format .` before committing
 - Keep inline styles out of templates where possible; add CSS classes to `styles.css`
 - Every new router file needs an `APIRouter()` instance and must be registered in `main.py`
-- Sub-routes like `/{id}/image` must be registered BEFORE `/{id}` catch-alls to avoid 405 errors
-
-## API surface
-
-### Businesses
-- `GET    /api/businesses` — list (supports `?category=` and `?search=`)
-- `POST   /api/businesses` — register
-- `POST   /api/businesses/{id}/image` — upload photo (must come before /{id} routes)
-- `DELETE /api/businesses/{id}/image` — remove photo + delete file from disk
-- `GET    /api/businesses/{id}` — get with nested deals and reviews
-- `PUT    /api/businesses/{id}` — partial update
-- `DELETE /api/businesses/{id}` — delete + cascade deals and reviews
-
-### Deals
-- `GET    /api/deals` — list active deals
-- `POST   /api/deals` — create (schedules background expiry task)
-- `PUT    /api/deals/{id}` — edit; `extend_hours` adjusts expiry, `urgency_threshold_hours` sets banner trigger
-- `DELETE /api/deals/{id}` — expire/remove
-
-### Reviews
-- `POST /api/reviews` — submit
-- `GET  /api/reviews/{business_id}` — list for a business
-
-### Agents
-- `GET  /api/agents/status` — Ollama health check
-- `POST /api/agents/generate-story` — AI founder story
-- `POST /api/agents/match` — AI business matchmaker
+- **Route ordering rule:** Always register specific sub-routes (e.g. `POST /{id}/image`, `DELETE /{id}/image`) *before* generic catch-all routes (e.g. `GET/PUT/DELETE /{id}`). FastAPI matches top-to-bottom; registering sub-routes after the catch-all causes 405 Method Not Allowed errors.
 
 ## AI agents
 
@@ -83,5 +57,22 @@ CommunitySpark is a local business discovery platform for minority-owned and com
 
 - Do not add external API dependencies (no OpenAI, no Google Maps, no Supabase)
 - Do not use blocking I/O in async route handlers
-- Do not commit `communityspark.db` or `static/uploads/` — both are auto-generated
-- Do not register `/{id}` catch-all routes before `/{id}/sub-resource` routes
+- Do not commit `communityspark.db` — it is auto-generated
+- Do not commit files in `static/uploads/` — user-uploaded photos are runtime artifacts
+
+## Business management endpoints
+
+- `GET    /api/businesses` — list all approved businesses
+- `GET    /api/businesses/{id}` — single business with nested deals and reviews
+- `POST   /api/businesses` — register new business
+- `PUT    /api/businesses/{id}` — edit business fields (`BusinessUpdate` model)
+- `DELETE /api/businesses/{id}` — delete business and cascade deals/reviews
+- `POST   /api/businesses/{id}/image` — upload photo (JPEG/PNG/WebP/GIF, max 5 MB)
+- `DELETE /api/businesses/{id}/image` — remove photo from disk and clear DB field
+
+## Deal management endpoints
+
+- `GET    /api/deals` — all active non-expired deals
+- `POST   /api/deals` — create deal with optional `urgency_threshold_hours`
+- `PUT    /api/deals/{id}` — edit deal; use `extend_hours` to adjust expiry duration
+- `DELETE /api/deals/{id}` — manually expire a deal
