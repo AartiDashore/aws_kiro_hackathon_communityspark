@@ -17,7 +17,51 @@ Version: 1.0.0
   </div>
 </section>
 
-<div id="stats-bar" class="stats-bar" style="display:none">
+<!-- ── Agent 5: Business Matchmaker ────────────────────────── -->
+<div style="max-width:1200px;margin:2rem auto 0;padding:0 2rem">
+  <div style="background:var(--secondary);border-radius:var(--r-lg);padding:2rem;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 25% 50%,rgba(232,93,38,.18),transparent 60%);pointer-events:none"></div>
+    <div style="position:relative">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.4rem">
+        <span style="background:rgba(245,166,35,.2);border:1px solid rgba(245,166,35,.35);color:var(--accent);font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:.2rem .65rem;border-radius:99px">✨ AI Agent</span>
+        <h2 style="font-family:var(--font-display);color:#fff;font-size:1.3rem">Find the right business for you</h2>
+      </div>
+      <p style="color:rgba(255,255,255,.55);font-size:.88rem;margin-bottom:1.2rem">
+        Describe what you need in plain English — AI reads the live listings and finds your best match.
+      </p>
+
+      <div style="display:flex;gap:.7rem">
+        <input id="chat-input" type="text"
+          placeholder='e.g. "I want fresh food from a family-owned restaurant"'
+          style="flex:1;padding:.85rem 1.1rem;border-radius:var(--r-sm);border:none;font-family:var(--font-body);font-size:.9rem;outline:none;color:var(--text)">
+        <button id="chat-btn" onclick="sendMatch()"
+          style="background:var(--primary);color:#fff;border:none;padding:.85rem 1.4rem;border-radius:var(--r-sm);font-weight:600;cursor:pointer;font-family:var(--font-body);white-space:nowrap;min-width:120px">
+          Find Match
+        </button>
+      </div>
+
+      <!-- Quick chips -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem">
+        <button onclick="quickAsk('I need a haircut for natural hair')"
+          style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;cursor:pointer;font-family:var(--font-body)">💅 Natural hair</button>
+        <button onclick="quickAsk('Looking for unique gifts and art')"
+          style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;cursor:pointer;font-family:var(--font-body)">🎁 Gifts &amp; art</button>
+        <button onclick="quickAsk('Where can I get authentic cultural food?')"
+          style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;cursor:pointer;font-family:var(--font-body)">🍜 Cultural food</button>
+        <button onclick="quickAsk('I need alterations or tailoring')"
+          style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:.3rem .8rem;font-size:.78rem;cursor:pointer;font-family:var(--font-body)">🧵 Tailoring</button>
+      </div>
+
+      <!-- Reply box -->
+      <div id="chat-reply"
+        style="display:none;margin-top:1.2rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+               border-radius:var(--r-sm);padding:1.1rem 1.3rem;color:rgba(255,255,255,.9);
+               font-size:.92rem;line-height:1.75;white-space:pre-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<div id="stats-bar" class="stats-bar" style="display:none;margin-top:1.5rem">
   <div class="stat"><span class="stat__num" id="stat-biz">0</span><span class="stat__label">Businesses</span></div>
   <div class="stat"><span class="stat__num" id="stat-deals">—</span><span class="stat__label">Active Deals</span></div>
   <div class="stat"><span class="stat__num" id="stat-cats">0</span><span class="stat__label">Categories</span></div>
@@ -49,20 +93,62 @@ Version: 1.0.0
 const CAT_EMOJI = {'Food & Dining':'🍜','Beauty & Wellness':'💅','Retail':'🛍️','Services':'🔧','Arts & Culture':'🎨'};
 let currentCat = '';
 
+/* ── Agent 5: Matchmaker ───────────────────────────────── */
+async function sendMatch() {
+  const input = document.getElementById('chat-input');
+  const reply = document.getElementById('chat-reply');
+  const btn   = document.getElementById('chat-btn');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  btn.disabled    = true;
+  btn.textContent = 'Searching…';
+  reply.style.display = 'block';
+  reply.textContent   = '✨ AI is reading the listings and finding your best match…';
+
+  try {
+    const res  = await fetch('/api/agents/match', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ message: msg })
+    });
+    const json = await res.json();
+    if (res.ok) {
+      reply.textContent = json.reply;
+    } else {
+      reply.textContent = '⚠️ ' + (json.detail || 'Something went wrong.');
+    }
+  } catch (err) {
+    reply.textContent = '⚠️ Request failed: ' + err.message;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Find Match';
+  }
+}
+
+function quickAsk(text) {
+  document.getElementById('chat-input').value = text;
+  sendMatch();
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMatch();
+});
+
+/* ── Business grid ─────────────────────────────────────── */
 async function loadBusinesses(cat='', search='') {
-  const grid = document.getElementById('business-grid');
   const params = new URLSearchParams();
   if (cat)    params.append('category', cat);
-  if (search) params.append('search', search);
-
+  if (search) params.append('search',   search);
   try {
     const res  = await fetch('/api/businesses?' + params);
     const json = await res.json();
-    const businesses = json.data || [];
-    renderGrid(businesses);
-    updateStats(businesses);
+    const list = json.data || [];
+    renderGrid(list);
+    updateStats(list);
   } catch {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><p>Failed to load. Please refresh.</p></div>';
+    document.getElementById('business-grid').innerHTML =
+      '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><p>Failed to load. Please refresh.</p></div>';
   }
 }
 
@@ -91,9 +177,8 @@ function renderGrid(businesses) {
 }
 
 async function updateStats(businesses) {
-  document.getElementById('stat-biz').textContent = businesses.length;
-  const cats = new Set(businesses.map(b => b.category));
-  document.getElementById('stat-cats').textContent = cats.size;
+  document.getElementById('stat-biz').textContent  = businesses.length;
+  document.getElementById('stat-cats').textContent = new Set(businesses.map(b => b.category)).size;
   try {
     const res  = await fetch('/api/deals');
     const json = await res.json();
