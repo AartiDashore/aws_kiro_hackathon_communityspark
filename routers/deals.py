@@ -5,7 +5,7 @@ Version: 1.0.0
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from models import DealCreate
+from models import DealCreate, DealUpdate
 from database import get_db
 from datetime import datetime, timedelta, timezone
 import asyncio
@@ -64,8 +64,8 @@ async def create_deal(deal: DealCreate, background_tasks: BackgroundTasks):
         cursor = await db.execute(
             """INSERT INTO deals
                (business_id, title, description, discount_percent,
-                original_price, deal_price, expires_at, is_active)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
+                original_price, deal_price, expires_at, is_active, urgency_threshold_hours)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)""",
             [
                 deal.business_id,
                 deal.title,
@@ -74,6 +74,7 @@ async def create_deal(deal: DealCreate, background_tasks: BackgroundTasks):
                 deal.original_price,
                 deal_price,
                 expires_str,
+                deal.urgency_threshold_hours,
             ],
         )
         await db.commit()
@@ -93,11 +94,53 @@ async def create_deal(deal: DealCreate, background_tasks: BackgroundTasks):
 
 @router.delete("/{deal_id}")
 async def expire_deal(deal_id: int):
-    """Manually expire a deal."""
+    """Manually expire/delete a deal."""
     db = await get_db()
     try:
         await db.execute("UPDATE deals SET is_active = 0 WHERE id = ?", [deal_id])
         await db.commit()
         return {"data": {"success": True}, "error": None}
+    finally:
+        await db.close()
+
+
+@router.put("/{deal_id}")
+async def update_deal(deal_id: int, updates: DealUpdate):
+    """Edit an existing deal — title, description, discount, price, time extension, or urgency threshold."""
+    db = await get_db()
+    try:
+        # Handle extend_hours separately — it adjusts expires_at relative to current value
+        extend = updates.extend_hours
+        scalar_fields = {
+            k: v for k, v in updates.model_dump().items()
+            if v is not None and k not in ("extend_hours",)
+        }
+
+        if extend is not None:
+            cursor = await db.execute("SELECT expires_at FROM deals WHERE id = ?", [deal_id])
+            row = await cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Deal not found")
+            current_expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            new_expires = current_expires + timedelta(hours=extend)
+            # Don't allow expiry to go into the past
+            if new_expires < datetime.now(timezone.utc):
+                raise HTTPException(status_code=400, detail="Cannot shorten deal past its current expiry")
+            scalar_fields["expires_at"] = new_expires.strftime("%Y-%m-%d %H:%M:%S")
+
+        if not scalar_fields:
+            raise HTTPException(status_code=400, detail="No fields provided to update")
+
+        set_clause = ", ".join(f"{k} = ?" for k in scalar_fields)
+        await db.execute(
+            f"UPDATE deals SET {set_clause} WHERE id = ?",
+            [*scalar_fields.values(), deal_id],
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT * FROM deals WHERE id = ?", [deal_id])
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Deal not found")
+        return {"data": dict(row), "error": None}
     finally:
         await db.close()

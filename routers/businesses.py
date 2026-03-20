@@ -4,11 +4,18 @@ Author: Aarti Dashore
 Version: 1.0.0
 """
 
-from fastapi import APIRouter, HTTPException
-from models import BusinessCreate
+import os
+import uuid
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from models import BusinessCreate, BusinessUpdate
 from database import get_db
 
 router = APIRouter()
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 @router.get("/")
@@ -90,5 +97,65 @@ async def register_business(business: BusinessCreate):
         return {"data": dict(row), "error": None}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        await db.close()
+
+
+@router.put("/{business_id}")
+async def update_business(business_id: int, updates: BusinessUpdate):
+    """Update fields on an existing business."""
+    fields = {k: v for k, v in updates.model_dump().items() if v is not None}
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields provided to update")
+    db = await get_db()
+    try:
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        await db.execute(
+            f"UPDATE businesses SET {set_clause} WHERE id = ?",
+            [*fields.values(), business_id],
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT * FROM businesses WHERE id = ?", [business_id])
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Business not found")
+        return {"data": dict(row), "error": None}
+    finally:
+        await db.close()
+
+
+@router.delete("/{business_id}")
+async def delete_business(business_id: int):
+    """Delete a business and all its associated deals and reviews."""
+    db = await get_db()
+    try:
+        await db.execute("DELETE FROM reviews WHERE business_id = ?", [business_id])
+        await db.execute("DELETE FROM deals WHERE business_id = ?", [business_id])
+        await db.execute("DELETE FROM businesses WHERE id = ?", [business_id])
+        await db.commit()
+        return {"data": {"success": True}, "error": None}
+    finally:
+        await db.close()
+
+
+@router.post("/{business_id}/image")
+async def upload_image(business_id: int, file: UploadFile = File(...)):
+    """Upload a photo for a business listing."""
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, or GIF images are allowed")
+    contents = await file.read()
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{business_id}_{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(contents)
+    image_url = f"/static/uploads/{filename}"
+    db = await get_db()
+    try:
+        await db.execute("UPDATE businesses SET image_url = ? WHERE id = ?", [image_url, business_id])
+        await db.commit()
+        return {"data": {"image_url": image_url}, "error": None}
     finally:
         await db.close()

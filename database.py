@@ -29,16 +29,17 @@ async def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS deals (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            business_id      INTEGER REFERENCES businesses(id),
-            title            TEXT NOT NULL,
-            description      TEXT,
-            discount_percent INTEGER,
-            original_price   REAL,
-            deal_price       REAL,
-            expires_at       TEXT NOT NULL,
-            is_active        INTEGER DEFAULT 1,
-            created_at       TEXT DEFAULT (datetime('now'))
+            id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id              INTEGER REFERENCES businesses(id),
+            title                    TEXT NOT NULL,
+            description              TEXT,
+            discount_percent         INTEGER,
+            original_price           REAL,
+            deal_price               REAL,
+            expires_at               TEXT NOT NULL,
+            is_active                INTEGER DEFAULT 1,
+            urgency_threshold_hours  REAL DEFAULT NULL,
+            created_at               TEXT DEFAULT (datetime('now'))
         );
 
         CREATE TABLE IF NOT EXISTS reviews (

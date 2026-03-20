@@ -10,14 +10,16 @@ Version: 1.0.0
 <div id="loading" class="profile-hero" style="min-height:200px">
   <p style="color:rgba(255,255,255,.45);padding-top:2rem">Loading…</p>
 </div>
+<div id="urgency-banner" class="urgency-banner" style="display:none" role="alert"></div>
 <div id="profile" style="display:none"></div>
 
 <!-- Post a Deal modal -->
 <div id="deal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;padding:2rem;width:min(460px,92vw);position:relative">
-    <button onclick="document.getElementById('deal-modal').style.display='none'"
+    <button onclick="closeDealModal()"
       style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
-    <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:1.2rem">Post a Flash Deal</h3>
+    <h3 id="deal-modal-title" style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:1.2rem">Post a Flash Deal</h3>
+    <input type="hidden" id="deal-edit-id">
     <div class="form-group">
       <label>Deal Title *</label>
       <input type="text" id="deal-title" placeholder="e.g. Lunch Special">
@@ -36,11 +38,61 @@ Version: 1.0.0
         <input type="number" id="deal-price" min="0" step="0.01" placeholder="18.00">
       </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="deal-hours-group">
       <label>Expires in (hours) *</label>
       <input type="number" id="deal-hours" min="0.5" step="0.5" value="24">
     </div>
+    <div class="form-group" id="deal-extend-group" style="display:none">
+      <label>Adjust time (hours) <span style="color:var(--muted);font-weight:400">— positive to extend, negative to shorten</span></label>
+      <input type="number" id="deal-extend" step="0.5" placeholder="e.g. 2 or -1">
+    </div>
+    <div class="form-group">
+      <label>Urgency banner threshold (hours) <span style="color:var(--muted);font-weight:400">— show "Hurry up!" when X hours remain (leave blank to disable)</span></label>
+      <input type="number" id="deal-urgency" min="0.5" step="0.5" placeholder="e.g. 3">
+    </div>
     <button class="btn btn--primary btn--full" onclick="submitDeal()">Post Deal</button>
+  </div>
+</div>
+
+<!-- Edit Business modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:2rem;width:min(520px,92vw);position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="document.getElementById('edit-modal').style.display='none'"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
+    <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:1.2rem">Edit Business</h3>
+    <div class="form-group"><label>Business Name</label><input type="text" id="edit-name"></div>
+    <div class="form-group"><label>Short Description</label><input type="text" id="edit-desc"></div>
+    <div class="form-group"><label>Our Story</label><textarea id="edit-story" rows="3" style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--font-body);font-size:.9rem;resize:vertical;outline:none;background:var(--bg)"></textarea></div>
+    <div class="form-group"><label>Category</label>
+      <select id="edit-cat">
+        <option>Food &amp; Dining</option>
+        <option>Beauty &amp; Wellness</option>
+        <option>Retail</option>
+        <option>Services</option>
+        <option>Arts &amp; Culture</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Address</label><input type="text" id="edit-address"></div>
+    <div class="form-group"><label>Phone</label><input type="tel" id="edit-phone"></div>
+    <div class="form-group"><label>Website</label><input type="url" id="edit-website"></div>
+    <div style="display:flex;gap:.8rem;margin-top:.5rem">
+      <button class="btn btn--primary" style="flex:1" onclick="submitEdit()">Save Changes</button>
+      <button class="btn btn--danger" style="flex:1" onclick="deleteBusiness()">Delete Business</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Upload modal -->
+<div id="img-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:2rem;width:min(420px,92vw);position:relative">
+    <button onclick="document.getElementById('img-modal').style.display='none'"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted)">✕</button>
+    <h3 style="font-family:var(--font-display);font-size:1.3rem;margin-bottom:1.2rem">Upload Business Photo</h3>
+    <div class="form-group">
+      <label>Choose image (JPEG, PNG, WebP — max 5 MB)</label>
+      <input type="file" id="img-file" accept="image/jpeg,image/png,image/webp,image/gif">
+    </div>
+    <button class="btn btn--primary btn--full" onclick="uploadImage()">Upload Photo</button>
   </div>
 </div>
 {% endblock %}
@@ -79,10 +131,15 @@ async function loadProfile() {
         ${b.website ? `<span>🌐 <a href="${escHtml(b.website)}" target="_blank" rel="noopener" style="color:var(--accent)">${escHtml(b.website.replace(/^https?:\/\//,''))}</a></span>` : ''}
         ${avgRating ? `<span>⭐ ${avgRating} (${b.reviews.length} review${b.reviews.length!==1?'s':''})</span>` : ''}
       </div>
+      <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap">
+        <button class="btn btn--secondary" style="font-size:.8rem;padding:.35rem .8rem" onclick="openEditModal(${JSON.stringify(b).replace(/"/g,'&quot;')})">✏️ Edit Business</button>
+        <button class="btn btn--secondary" style="font-size:.8rem;padding:.35rem .8rem" onclick="document.getElementById('img-modal').style.display='flex'">📷 Upload Photo</button>
+      </div>
     </div>
 
     <div class="profile-body">
       <div>
+        ${b.image_url ? `<img src="${escHtml(b.image_url)}" alt="${escHtml(b.name)}" class="profile-photo">` : ''}
         ${b.story ? `
           <div style="margin-bottom:2rem">
             <div class="profile-label">Our Story</div>
@@ -133,11 +190,17 @@ async function loadProfile() {
           <h3 style="display:flex;align-items:center;justify-content:space-between">
             🔥 Deals
             <button class="btn btn--secondary" style="font-size:.78rem;padding:.3rem .7rem"
-              onclick="document.getElementById('deal-modal').style.display='flex'">+ Post Deal</button>
+              onclick="openNewDealModal()">+ Post Deal</button>
           </h3>
           ${activeDeals.length ? activeDeals.map(d => `
             <div class="deal-inline">
-              <div class="deal-inline__pct">${d.discount_percent}% OFF</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+                <div class="deal-inline__pct">${d.discount_percent}% OFF</div>
+                <div style="display:flex;gap:.4rem">
+                  <button class="btn--icon" title="Edit deal" onclick="openEditDealModal(${JSON.stringify(d).replace(/"/g,'&quot;')})">✏️</button>
+                  <button class="btn--icon btn--icon-danger" title="Delete deal" onclick="deleteDeal(${d.id})">🗑️</button>
+                </div>
+              </div>
               <div class="deal-inline__title">${escHtml(d.title)}</div>
               ${d.description ? `<div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">${escHtml(d.description)}</div>` : ''}
               <div class="deal-inline__timer" id="di-${d.id}">⏱ …</div>
@@ -148,8 +211,10 @@ async function loadProfile() {
     </div>`;
 
   activeDeals.forEach(d => startCountdown(`di-${d.id}`, d.expires_at));
+  checkUrgencyBanner(activeDeals);
 }
 
+// ── Star rating ──────────────────────────────────────────────
 function setStar(val) {
   selectedRating = val;
   document.querySelectorAll('.star-btn').forEach((btn, i) => {
@@ -158,6 +223,7 @@ function setStar(val) {
   });
 }
 
+// ── Review ───────────────────────────────────────────────────
 async function submitReview() {
   if (!selectedRating) { showToast('Please select a star rating.', 'error'); return; }
   const comment = document.getElementById('rev-comment').value.trim();
@@ -176,29 +242,202 @@ async function submitReview() {
   }
 }
 
-async function submitDeal() {
-  const title = document.getElementById('deal-title').value.trim();
-  const pct   = parseInt(document.getElementById('deal-pct').value);
-  const hours = parseFloat(document.getElementById('deal-hours').value);
-  if (!title || !pct || !hours) { showToast('Title, discount %, and hours are required.', 'error'); return; }
+// ── Deal modal helpers ────────────────────────────────────────
+function openNewDealModal() {
+  document.getElementById('deal-edit-id').value = '';
+  document.getElementById('deal-modal-title').textContent = 'Post a Flash Deal';
+  document.getElementById('deal-title').value = '';
+  document.getElementById('deal-desc').value = '';
+  document.getElementById('deal-pct').value = '';
+  document.getElementById('deal-price').value = '';
+  document.getElementById('deal-hours').value = '24';
+  document.getElementById('deal-urgency').value = '';
+  document.getElementById('deal-hours-group').style.display = 'block';
+  document.getElementById('deal-extend-group').style.display = 'none';
+  document.querySelector('#deal-modal .btn--primary').textContent = 'Post Deal';
+  document.getElementById('deal-modal').style.display = 'flex';
+}
 
-  const res = await fetch('/api/deals', {
-    method: 'POST',
+function openEditDealModal(d) {
+  document.getElementById('deal-edit-id').value = d.id;
+  document.getElementById('deal-modal-title').textContent = 'Edit Deal';
+  document.getElementById('deal-title').value = d.title || '';
+  document.getElementById('deal-desc').value = d.description || '';
+  document.getElementById('deal-pct').value = d.discount_percent || '';
+  document.getElementById('deal-price').value = d.original_price || '';
+  document.getElementById('deal-extend').value = '';
+  document.getElementById('deal-urgency').value = d.urgency_threshold_hours || '';
+  document.getElementById('deal-hours-group').style.display = 'none';
+  document.getElementById('deal-extend-group').style.display = 'block';
+  document.querySelector('#deal-modal .btn--primary').textContent = 'Save Changes';
+  document.getElementById('deal-modal').style.display = 'flex';
+}
+
+function closeDealModal() {
+  document.getElementById('deal-modal').style.display = 'none';
+}
+
+async function submitDeal() {
+  const editId  = document.getElementById('deal-edit-id').value;
+  const title   = document.getElementById('deal-title').value.trim();
+  const pct     = parseInt(document.getElementById('deal-pct').value);
+  const hours   = parseFloat(document.getElementById('deal-hours').value);
+  const urgency = parseFloat(document.getElementById('deal-urgency').value) || null;
+
+  if (editId) {
+    const extend = parseFloat(document.getElementById('deal-extend').value) || null;
+    const payload = {};
+    if (title) payload.title = title;
+    const descVal = document.getElementById('deal-desc').value.trim();
+    if (descVal) payload.description = descVal;
+    if (pct) payload.discount_percent = pct;
+    const priceVal = parseFloat(document.getElementById('deal-price').value);
+    if (priceVal) payload.original_price = priceVal;
+    if (extend !== null) payload.extend_hours = extend;
+    if (urgency !== null) payload.urgency_threshold_hours = urgency;
+
+    const res = await fetch(`/api/deals/${editId}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeDealModal();
+      showToast('Deal updated.', 'success');
+      setTimeout(loadProfile, 500);
+    } else {
+      const err = await res.json();
+      showToast(err.detail || 'Failed to update deal.', 'error');
+    }
+  } else {
+    if (!title || !pct || !hours) { showToast('Title, discount %, and hours are required.', 'error'); return; }
+    const res = await fetch('/api/deals', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        business_id: BIZ_ID, title,
+        description: document.getElementById('deal-desc').value.trim() || null,
+        discount_percent: pct,
+        original_price: parseFloat(document.getElementById('deal-price').value) || null,
+        expires_in_hours: hours,
+        urgency_threshold_hours: urgency
+      })
+    });
+    if (res.ok) {
+      closeDealModal();
+      showToast('🔥 Deal posted! It\'s live now.', 'success');
+      setTimeout(loadProfile, 800);
+    } else {
+      showToast('Failed to post deal.', 'error');
+    }
+  }
+}
+
+async function deleteDeal(dealId) {
+  if (!confirm('Remove this deal?')) return;
+  const res = await fetch(`/api/deals/${dealId}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Deal removed.', 'success');
+    setTimeout(loadProfile, 500);
+  } else {
+    showToast('Failed to remove deal.', 'error');
+  }
+}
+
+// ── Edit business ─────────────────────────────────────────────
+function openEditModal(b) {
+  document.getElementById('edit-name').value    = b.name || '';
+  document.getElementById('edit-desc').value    = b.description || '';
+  document.getElementById('edit-story').value   = b.story || '';
+  document.getElementById('edit-cat').value     = b.category || '';
+  document.getElementById('edit-address').value = b.address || '';
+  document.getElementById('edit-phone').value   = b.phone || '';
+  document.getElementById('edit-website').value = b.website || '';
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+async function submitEdit() {
+  const payload = {
+    name:        document.getElementById('edit-name').value.trim() || undefined,
+    description: document.getElementById('edit-desc').value.trim() || undefined,
+    story:       document.getElementById('edit-story').value.trim() || undefined,
+    category:    document.getElementById('edit-cat').value || undefined,
+    address:     document.getElementById('edit-address').value.trim() || undefined,
+    phone:       document.getElementById('edit-phone').value.trim() || undefined,
+    website:     document.getElementById('edit-website').value.trim() || undefined,
+  };
+  const res = await fetch(`/api/businesses/${BIZ_ID}`, {
+    method: 'PUT',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      business_id: BIZ_ID, title,
-      description: document.getElementById('deal-desc').value.trim() || null,
-      discount_percent: pct,
-      original_price: parseFloat(document.getElementById('deal-price').value)||null,
-      expires_in_hours: hours
-    })
+    body: JSON.stringify(payload)
   });
   if (res.ok) {
-    document.getElementById('deal-modal').style.display = 'none';
-    showToast('🔥 Deal posted! It\'s live now.', 'success');
-    setTimeout(loadProfile, 800);
+    document.getElementById('edit-modal').style.display = 'none';
+    showToast('Business updated.', 'success');
+    setTimeout(loadProfile, 500);
   } else {
-    showToast('Failed to post deal.', 'error');
+    showToast('Failed to update business.', 'error');
+  }
+}
+
+async function deleteBusiness() {
+  if (!confirm('Permanently delete this business and all its deals and reviews? This cannot be undone.')) return;
+  const res = await fetch(`/api/businesses/${BIZ_ID}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Business deleted.', 'success');
+    setTimeout(() => window.location.href = '/', 1000);
+  } else {
+    showToast('Failed to delete business.', 'error');
+  }
+}
+
+// ── Image upload ──────────────────────────────────────────────
+async function uploadImage() {
+  const file = document.getElementById('img-file').files[0];
+  if (!file) { showToast('Please select an image file.', 'error'); return; }
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`/api/businesses/${BIZ_ID}/image`, { method: 'POST', body: form });
+  if (res.ok) {
+    document.getElementById('img-modal').style.display = 'none';
+    showToast('Photo uploaded.', 'success');
+    setTimeout(loadProfile, 500);
+  } else {
+    const err = await res.json();
+    showToast(err.detail || 'Upload failed.', 'error');
+  }
+}
+
+// ── Urgency banner ────────────────────────────────────────────
+function checkUrgencyBanner(activeDeals) {
+  const banner = document.getElementById('urgency-banner');
+  if (!banner) return;
+
+  // Find the deal closest to expiry that has a threshold set
+  let triggered = null;
+  for (const d of activeDeals) {
+    if (!d.urgency_threshold_hours) continue;
+    const msLeft = new Date(d.expires_at + 'Z') - new Date();
+    const hoursLeft = msLeft / 3600000;
+    if (hoursLeft > 0 && hoursLeft <= d.urgency_threshold_hours) {
+      if (!triggered || hoursLeft < (new Date(triggered.expires_at + 'Z') - new Date()) / 3600000) {
+        triggered = { ...d, hoursLeft };
+      }
+    }
+  }
+
+  if (triggered) {
+    const h = Math.floor(triggered.hoursLeft);
+    const m = Math.floor((triggered.hoursLeft % 1) * 60);
+    const timeStr = h > 0 ? `${h}h ${m}m` : `${m} minutes`;
+    banner.innerHTML = `⚡ Hurry up! Only <strong>${timeStr}</strong> remaining before <strong>${escHtml(triggered.title)}</strong> expires!
+      <button class="urgency-banner__close" onclick="this.parentElement.style.display='none'" aria-label="Dismiss">✕</button>`;
+    banner.style.display = 'flex';
+
+    // Refresh the banner every minute so the time stays accurate
+    setTimeout(() => checkUrgencyBanner(activeDeals), 60000);
+  } else {
+    banner.style.display = 'none';
   }
 }
 
