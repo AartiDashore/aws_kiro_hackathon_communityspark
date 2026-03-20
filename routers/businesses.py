@@ -12,7 +12,9 @@ from database import get_db
 
 router = APIRouter()
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+UPLOAD_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "static", "uploads"
+)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE = 5 * 1024 * 1024  # 5 MB
@@ -39,44 +41,27 @@ async def list_businesses(category: str = None, search: str = None):
         await db.close()
 
 
-@router.post("/{business_id}/image")
-async def upload_image(business_id: int, file: UploadFile = File(...)):
-    """Upload a photo for a business listing."""
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, or GIF images are allowed")
-    contents = await file.read()
-    if len(contents) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
-    filename = f"{business_id}_{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(contents)
-    image_url = f"/static/uploads/{filename}"
-    db = await get_db()
-    try:
-        await db.execute("UPDATE businesses SET image_url = ? WHERE id = ?", [image_url, business_id])
-        await db.commit()
-        return {"data": {"image_url": image_url}, "error": None}
-    finally:
-        await db.close()
-
-
 @router.delete("/{business_id}/image")
 async def delete_image(business_id: int):
     """Remove the photo from a business listing and delete the file from disk."""
     db = await get_db()
     try:
-        cursor = await db.execute("SELECT image_url FROM businesses WHERE id = ?", [business_id])
+        cursor = await db.execute(
+            "SELECT image_url FROM businesses WHERE id = ?", [business_id]
+        )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Business not found")
         image_url = row["image_url"]
         if image_url and image_url.startswith("/static/uploads/"):
-            filepath = os.path.join(os.path.dirname(os.path.dirname(__file__)), image_url.lstrip("/"))
+            filepath = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), image_url.lstrip("/")
+            )
             if os.path.isfile(filepath):
                 os.remove(filepath)
-        await db.execute("UPDATE businesses SET image_url = NULL WHERE id = ?", [business_id])
+        await db.execute(
+            "UPDATE businesses SET image_url = NULL WHERE id = ?", [business_id]
+        )
         await db.commit()
         return {"data": {"success": True}, "error": None}
     finally:
@@ -159,7 +144,9 @@ async def update_business(business_id: int, updates: BusinessUpdate):
             [*fields.values(), business_id],
         )
         await db.commit()
-        cursor = await db.execute("SELECT * FROM businesses WHERE id = ?", [business_id])
+        cursor = await db.execute(
+            "SELECT * FROM businesses WHERE id = ?", [business_id]
+        )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Business not found")
@@ -186,7 +173,9 @@ async def delete_business(business_id: int):
 async def upload_image(business_id: int, file: UploadFile = File(...)):
     """Upload a photo for a business listing."""
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, or GIF images are allowed")
+        raise HTTPException(
+            status_code=400, detail="Only JPEG, PNG, WebP, or GIF images are allowed"
+        )
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="Image must be under 5 MB")
@@ -198,7 +187,9 @@ async def upload_image(business_id: int, file: UploadFile = File(...)):
     image_url = f"/static/uploads/{filename}"
     db = await get_db()
     try:
-        await db.execute("UPDATE businesses SET image_url = ? WHERE id = ?", [image_url, business_id])
+        await db.execute(
+            "UPDATE businesses SET image_url = ? WHERE id = ?", [image_url, business_id]
+        )
         await db.commit()
         return {"data": {"image_url": image_url}, "error": None}
     finally:
