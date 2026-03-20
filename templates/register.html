@@ -44,8 +44,24 @@ Version: 1.0.0
     <div class="form-section">
       <h3>Your Story</h3>
       <div class="form-group">
-        <label>Tell the community about yourself *</label>
-        <textarea id="f-story" rows="5" placeholder="Why did you start this business? What drives you? What makes you special to this community?" required></textarea>
+        <label>Your Background <span style="color:var(--muted);font-weight:400">(optional — helps AI write a better story)</span></label>
+        <input type="text" id="f-background"
+          placeholder="e.g. Immigrant from Vietnam, third-generation baker, self-taught chef…">
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+          <span>Tell the community about yourself *</span>
+          <button type="button" id="ai-btn" onclick="generateStory()"
+            style="background:var(--primary-lt);color:var(--primary);border:1.5px solid var(--primary);
+                   border-radius:99px;padding:.25rem .9rem;font-size:.78rem;font-weight:600;
+                   cursor:pointer;font-family:var(--font-body)">
+            ✨ Write with AI
+          </button>
+        </label>
+        <textarea id="f-story" rows="6"
+          placeholder="Why did you start this business? What drives you? What makes you special to this community?"
+          required></textarea>
+        <p id="ai-status" style="font-size:.78rem;margin-top:.4rem;display:none"></p>
       </div>
     </div>
 
@@ -71,6 +87,63 @@ Version: 1.0.0
 
 {% block scripts %}
 <script>
+/* ── Agent 1: Story Writer ──────────────────────────────── */
+async function generateStory() {
+  const name = document.getElementById('f-name').value.trim();
+  const cat  = document.getElementById('f-cat').value;
+  const desc = document.getElementById('f-desc').value.trim();
+  const addr = document.getElementById('f-addr').value.trim();
+  const bg   = document.getElementById('f-background').value.trim();
+
+  if (!name || !cat) {
+    showToast('Fill in your business name and category first.', 'error');
+    return;
+  }
+
+  const btn      = document.getElementById('ai-btn');
+  const textarea = document.getElementById('f-story');
+  const status   = document.getElementById('ai-status');
+
+  btn.disabled         = true;
+  btn.textContent      = '✨ Writing…';
+  textarea.disabled    = true;
+  status.style.display = 'block';
+  status.style.color   = 'var(--muted)';
+  status.textContent   = '✨ AI is writing your story — this may take 15–30 seconds…';
+
+  try {
+    const res = await fetch('/api/agents/generate-story', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        business_name:   name,
+        category:        cat,
+        what_you_sell:   desc || 'not provided',
+        neighborhood:    addr || 'not provided',
+        your_background: bg   || '',
+      })
+    });
+    const json = await res.json();
+    if (res.ok && json.story) {
+      textarea.value     = json.story;
+      status.style.color = 'var(--success)';
+      status.textContent = '✅ Story generated — feel free to edit it!';
+      showToast('✨ Story written! Edit it to make it your own.', 'success');
+    } else {
+      status.style.color = 'var(--primary)';
+      status.textContent = '⚠️ ' + (json.detail || 'Generation failed.');
+    }
+  } catch (err) {
+    status.style.color = 'var(--primary)';
+    status.textContent = '⚠️ Request failed: ' + err.message;
+  } finally {
+    btn.disabled      = false;
+    btn.textContent   = '✨ Write with AI';
+    textarea.disabled = false;
+  }
+}
+
+/* ── Form submit ───────────────────────────────────────── */
 document.getElementById('reg-form').addEventListener('submit', async e => {
   e.preventDefault();
   const name  = document.getElementById('f-name').value.trim();
@@ -88,8 +161,8 @@ document.getElementById('reg-form').addEventListener('submit', async e => {
 
   try {
     const res = await fetch('/api/businesses', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name, category: cat, description: desc, story, address: addr,
         phone:   document.getElementById('f-phone').value.trim() || null,
@@ -100,6 +173,7 @@ document.getElementById('reg-form').addEventListener('submit', async e => {
     if (res.ok) {
       showToast('🎉 Business listed! The community can find you now.', 'success');
       e.target.reset();
+      document.getElementById('ai-status').style.display = 'none';
       setTimeout(() => window.location.href = `/business/${json.data.id}`, 2000);
     } else {
       showToast('Error: ' + (json.detail || 'Something went wrong.'), 'error');
