@@ -59,9 +59,9 @@ Async-first, automatic OpenAPI docs at `/docs`, Pydantic validation built in. It
 - **Zero-dependency setup** — the 3-command setup (venv, pip install, uvicorn) worked exactly as intended. No `.env` files, no external services, no surprises.
 - **Auto-seeding sample data** — having 5 businesses, 4 deals, and 5 reviews ready on first run made demos and testing much smoother.
 - **MCP integration** — wiring the agents into Kiro via MCP was straightforward with `fastmcp` and added a genuinely useful workflow.
-- **Business management** — adding edit, delete, and photo upload/delete to the profile page made the platform feel complete. Owners have full control over their listing without needing a separate admin panel.
-- **Urgency banner** — the sticky "Hurry up!" banner with a business-owner-defined threshold added a real sense of urgency to flash deals without being intrusive. The dismiss button kept it from being annoying.
-- **Category emoji fallback** — when no photo is uploaded, showing a large category emoji on a dark background kept the UI clean and consistent across all cards and profile pages.
+- **Business management (edit/delete/image upload)** — giving owners full control over their listing without an admin panel felt right for a self-serve platform. The image upload with MIME-type validation and UUID-based filenames worked cleanly on first attempt.
+- **Urgency banner for deals** — the sticky top-of-page countdown banner with owner-defined threshold was a small feature with high visual impact. Letting the owner set the threshold (e.g. "warn me at 3 hours") made it feel intentional rather than arbitrary.
+- **Category emoji fallback** — when no photo is uploaded, showing a large category emoji on a dark background instead of a broken image placeholder made the UI feel polished with almost no extra code.
 
 ---
 
@@ -72,7 +72,7 @@ Async-first, automatic OpenAPI docs at `/docs`, Pydantic validation built in. It
 - **Inline styles in templates** — early in the build, styles were added inline for speed. This made the HTML harder to read and maintain. The steering file now enforces moving styles to `styles.css`, but some inline styles remain.
 - **No pagination** — all businesses load at once. Fine for a demo with 5 businesses, but would need pagination or virtual scrolling for real-world use.
 - **Deal expiry via background task** — deals expire via an `asyncio.sleep` background task. This works but doesn't survive server restarts. A proper scheduler (APScheduler or a cron job) would be more reliable.
-- **Route ordering bug** — `DELETE /api/businesses/{id}/image` returned 405 because `DELETE /{business_id}` was registered first and swallowed the request. Fixed by moving all `/image` sub-routes above the `/{business_id}` catch-alls. A good reminder that FastAPI matches routes top-to-bottom.
+- **FastAPI route ordering 405 bug** — sub-routes like `POST /{id}/image` and `DELETE /{id}/image` must be registered *before* the generic `/{id}` GET/PUT/DELETE routes. When registered after, FastAPI matches the path to `/{id}` and returns 405 Method Not Allowed. This cost significant debugging time and is now documented as a hard convention.
 
 ---
 
@@ -96,5 +96,6 @@ If this project were to grow beyond a hackathon:
 - Local LLMs via Ollama are production-viable for simple generation tasks. The quality of `llama3` for short-form creative writing (founder stories) was better than expected.
 - Prompt engineering matters more than model size for constrained tasks. The story writer prompt went through 4 iterations before the output was consistently good.
 - Building with zero external dependencies forces creative solutions that often end up being better anyway.
-- FastAPI route ordering matters — more specific paths (`/{id}/image`) must come before generic ones (`/{id}`) or they get swallowed silently with a 405.
-- Keeping destructive UI actions visually distinct (ghost red at rest, solid red on hover) reduces accidental deletions without hiding the option.
+- **FastAPI route ordering is load-order-sensitive.** Always register specific sub-routes (e.g. `/{id}/image`) before generic catch-all routes (e.g. `/{id}`). The router processes routes top-to-bottom and the first match wins.
+- **Destructive UI actions need visual weight.** Plain red buttons blend in. Ghost-style danger buttons (red border/text at rest, solid on hover) communicate "this is irreversible" without being alarming. The 🗑️ emoji prefix adds a universal signal without extra icon dependencies.
+- **Emoji as UI fallback is underrated.** A large category emoji on a dark card background is a perfectly acceptable placeholder for a missing photo — it's fast, zero-dependency, and actually looks intentional.
