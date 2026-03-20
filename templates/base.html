@@ -26,12 +26,40 @@ Version: 1.0.0
 
 {% block content %}{% endblock %}
 
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__brand">
+      <span class="footer__logo">Community<span>Spark</span></span>
+      <p class="footer__tagline">Celebrating minority-owned businesses in your community.</p>
+    </div>
+    <div class="footer__links">
+      <div class="footer__col">
+        <h4>Explore</h4>
+        <a href="/">Discover Businesses</a>
+        <a href="/deals">Flash Deals</a>
+        <a href="/register">List Your Business</a>
+        <a href="/docs">API Docs</a>
+      </div>
+      <div class="footer__col">
+        <h4>Project</h4>
+        <a href="https://github.com/your-username/communityspark" target="_blank" rel="noopener">GitHub</a>
+        <a href="/docs" target="_blank" rel="noopener">REST API</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer__bottom">
+    <span>© <span id="footer-year"></span> CommunitySpark. All rights reserved.</span>
+    <span>Built with ❤️ for the community by Aarti Dashore.</span>
+  </div>
+</footer>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const _p = window.location.pathname;
 if (_p === '/') document.getElementById('nav-home').classList.add('active');
 if (_p === '/deals') document.getElementById('nav-deals').classList.add('active');
+document.getElementById('footer-year').textContent = new Date().getFullYear();
 
 function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
