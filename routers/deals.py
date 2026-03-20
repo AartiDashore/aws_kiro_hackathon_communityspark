@@ -112,20 +112,28 @@ async def update_deal(deal_id: int, updates: DealUpdate):
         # Handle extend_hours separately — it adjusts expires_at relative to current value
         extend = updates.extend_hours
         scalar_fields = {
-            k: v for k, v in updates.model_dump().items()
+            k: v
+            for k, v in updates.model_dump().items()
             if v is not None and k not in ("extend_hours",)
         }
 
         if extend is not None:
-            cursor = await db.execute("SELECT expires_at FROM deals WHERE id = ?", [deal_id])
+            cursor = await db.execute(
+                "SELECT expires_at FROM deals WHERE id = ?", [deal_id]
+            )
             row = await cursor.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Deal not found")
-            current_expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            current_expires = datetime.strptime(
+                row["expires_at"], "%Y-%m-%d %H:%M:%S"
+            ).replace(tzinfo=timezone.utc)
             new_expires = current_expires + timedelta(hours=extend)
             # Don't allow expiry to go into the past
             if new_expires < datetime.now(timezone.utc):
-                raise HTTPException(status_code=400, detail="Cannot shorten deal past its current expiry")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot shorten deal past its current expiry",
+                )
             scalar_fields["expires_at"] = new_expires.strftime("%Y-%m-%d %H:%M:%S")
 
         if not scalar_fields:

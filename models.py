@@ -45,8 +45,10 @@ class DealUpdate(BaseModel):
     description: Optional[str] = None
     discount_percent: Optional[int] = None
     original_price: Optional[float] = None
-    extend_hours: Optional[float] = None             # positive = extend, negative = shorten
-    urgency_threshold_hours: Optional[float] = None  # update the urgency banner threshold
+    extend_hours: Optional[float] = None  # positive = extend, negative = shorten
+    urgency_threshold_hours: Optional[float] = (
+        None  # update the urgency banner threshold
+    )
 
 
 class ReviewCreate(BaseModel):
