@@ -1,6 +1,8 @@
 # CommunitySpark 🌍
 ### A discovery platform for minority-owned and community businesses
 
+[![CI](https://github.com/AartiDashore/aws_kiro_hackathon_communityspark/actions/workflows/ci.yml/badge.svg)](https://github.com/AartiDashore/aws_kiro_hackathon_communityspark/actions/workflows/ci.yml)
+
 > "68% of minority-owned small businesses report that limited visibility and lack of digital presence are their biggest barriers to growth." — U.S. Senate Committee on Small Business & Entrepreneurship
 
 ---
