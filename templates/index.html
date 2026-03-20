@@ -104,7 +104,7 @@ async function sendMatch() {
   btn.disabled    = true;
   btn.textContent = 'Searching…';
   reply.style.display = 'block';
-  reply.textContent   = '✨ AI is reading the listings and finding your best match…';
+  reply.innerHTML = '<span class="ai-loading"></span> ✨ AI is reading the listings and finding your best match…';
 
   try {
     const res  = await fetch('/api/agents/match', {

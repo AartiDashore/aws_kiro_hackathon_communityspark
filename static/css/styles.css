@@ -176,3 +176,15 @@ a:hover{text-decoration:underline}
 /* Responsive */
 @media(max-width:768px){.profile-body{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}}
 @media(max-width:640px){.navbar{padding:0 1rem}.navbar__links .btn-nav{display:none}.business-grid,.deal-grid{padding:1rem;gap:1rem}.hero{padding:3rem 1rem 2.5rem}.form-page{padding:0 1rem 3rem}.section-header,.filters{padding-left:1rem;padding-right:1rem}.stats-bar{gap:1.5rem;flex-wrap:wrap}}
+
+
+/* AI search base loader */
+.ai-loading {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(232,93,38,.3);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
