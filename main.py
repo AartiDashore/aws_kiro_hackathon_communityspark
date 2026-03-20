@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
-from routers import businesses, deals, reviews
+from routers import businesses, deals, reviews, agents
 from database import init_db
 
 
@@ -24,8 +24,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
-app.include_router(deals.router, prefix="/api/deals", tags=["deals"])
-app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(deals.router,      prefix="/api/deals",      tags=["deals"])
+app.include_router(reviews.router,    prefix="/api/reviews",    tags=["reviews"])
+app.include_router(agents.router,     prefix="/api/agents",     tags=["agents"])
 
 
 @app.get("/")
@@ -45,6 +46,7 @@ async def register_page(request: Request):
 
 @app.get("/business/{business_id}")
 async def business_page(request: Request, business_id: int):
-    return templates.TemplateResponse(
-        "business.html", {"request": request, "business_id": business_id}
-    )
+    return templates.TemplateResponse("business.html", {
+        "request": request,
+        "business_id": business_id
+    })
