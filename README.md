@@ -1,12 +1,15 @@
 # CommunitySpark 🌍
 
-A local business discovery platform built to spotlight independent and community-owned businesses. Browse businesses, post flash deals with live countdowns, and leave reviews — all with zero external dependencies.
+A local business discovery platform built to spotlight independent and community-owned businesses. Browse businesses, post flash deals with live countdowns, leave reviews, and get AI-powered recommendations — all with zero external API dependencies.
+
+> No Supabase. No Google Maps. No API keys. Just Python + Ollama.
 
 ## Tech Stack
 
 - [FastAPI](https://fastapi.tiangolo.com/) — async web framework
 - [SQLite](https://www.sqlite.org/) + [aiosqlite](https://github.com/omnilib/aiosqlite) — zero-config async database
 - [Jinja2](https://jinja.palletsprojects.com/) — server-side HTML templates
+- [Ollama](https://ollama.com/) — local LLM inference (no API key needed)
 - [Ruff](https://docs.astral.sh/ruff/) — linting and formatting
 - Vanilla JS — no frontend framework needed
 
@@ -58,8 +61,65 @@ All endpoints are prefixed with `/api`.
 | `POST` | `/api/deals` | Post a flash deal |
 | `GET` | `/api/deals` | List all active deals |
 | `POST` | `/api/reviews` | Submit a review |
+| `GET` | `/api/agents/status` | Check Ollama status and installed models |
+| `POST` | `/api/agents/generate-story` | AI: generate a founder story |
+| `POST` | `/api/agents/match` | AI: find businesses matching a natural language request |
 
 Full interactive docs available at `/docs` when the server is running.
+
+## AI Agents
+
+CommunitySpark includes two local AI agents powered by [Ollama](https://ollama.com/). No API keys or internet connection required.
+
+### Agent 1 — Story Writer
+
+Generates a warm, authentic 3-sentence first-person founder story from basic business info. Used on the registration page to help owners craft their listing.
+
+**Endpoint:** `POST /api/agents/generate-story`
+
+```json
+{
+  "business_name": "Mama Rosa's Kitchen",
+  "category": "Food & Dining",
+  "what_you_sell": "Authentic Mexican home cooking",
+  "neighborhood": "Mission District, San Francisco",
+  "your_background": "Third-generation cook from Oaxaca"
+}
+```
+
+### Agent 2 — Business Matchmaker
+
+Matches a user's natural language request to the best-fit businesses in the database. Filters by category in Python before calling the LLM, so the AI only reasons over relevant results.
+
+**Endpoint:** `POST /api/agents/match`
+
+```json
+{
+  "message": "I'm looking for a good haircut for natural hair"
+}
+```
+
+### MCP Server
+
+An MCP (Model Context Protocol) server is also included at `mcp_server.py`, exposing both agents as tools for use inside Kiro or any MCP-compatible client.
+
+```bash
+python mcp_server.py
+```
+
+### Ollama Setup
+
+```bash
+# Install Ollama: https://ollama.com/download
+ollama serve
+ollama pull llama3
+```
+
+The app auto-detects whichever model you have installed. Override with an env var:
+
+```bash
+OLLAMA_MODEL=phi3 uvicorn main:app --reload
+```
 
 ## Project Structure
 
@@ -68,10 +128,12 @@ communityspark/
 ├── main.py           # FastAPI app, routes, lifespan
 ├── models.py         # Pydantic request models
 ├── database.py       # SQLite setup and seed data
+├── mcp_server.py     # MCP server exposing AI agents as tools
 ├── routers/
 │   ├── businesses.py
 │   ├── deals.py
-│   └── reviews.py
+│   ├── reviews.py
+│   └── agents.py     # AI agent endpoints (story writer + matchmaker)
 ├── templates/        # Jinja2 HTML templates
 └── static/css/       # Styles
 ```
@@ -95,6 +157,15 @@ ruff check .
 # Format
 ruff format .
 ```
+
+## CI/CD
+
+GitHub Actions runs on every push and pull request to `main`:
+
+1. Lint — `ruff check` and `ruff format --check`
+2. Deploy — runs after lint passes on pushes to `main`
+
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## License
 
