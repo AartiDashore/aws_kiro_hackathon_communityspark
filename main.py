@@ -4,6 +4,7 @@ Author: Aarti Dashore
 Version: 1.0.0
 """
 
+import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,6 +22,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="CommunitySpark", version="1.0.0", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Ensure uploads dir exists and is served
+os.makedirs("static/uploads", exist_ok=True)
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(businesses.router, prefix="/api/businesses", tags=["businesses"])
