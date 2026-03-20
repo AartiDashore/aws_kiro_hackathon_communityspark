@@ -167,6 +167,24 @@ GitHub Actions runs on every push and pull request to `main`:
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
+## Browser Interface
+
+Homepage:
+![homepage-with-ai-search](screenshots/homepage_1.png)
+
+homepage listings:
+![listings-with-categories-and-deals](screenshots/homepage_2.png)
+
+Deals page:
+![deals-page](screenshots/deals_1.png)
+
+Creating a listing:
+![listing-form](screenshots/listing_1.png)
+
+Viewing the listing with public reviews:
+![description-with-reviews](screenshots/listing_2.png)
+
+
 ## License
 
 [MIT](LICENSE)
