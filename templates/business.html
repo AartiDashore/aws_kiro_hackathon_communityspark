@@ -101,6 +101,7 @@ Version: 1.0.0
 <div id="biz-data" data-id="{{ business_id }}" style="display:none"></div>
 <script>
 const BIZ_ID = parseInt(document.getElementById('biz-data').dataset.id, 10);
+const CAT_EMOJI = {'Food & Dining':'🍜','Beauty & Wellness':'💅','Retail':'🛍️','Services':'🔧','Arts & Culture':'🎨'};
 let selectedRating = 0;
 
 async function loadProfile() {
@@ -139,7 +140,15 @@ async function loadProfile() {
 
     <div class="profile-body">
       <div>
-        ${b.image_url ? `<img src="${escHtml(b.image_url)}" alt="${escHtml(b.name)}" class="profile-photo">` : ''}
+        ${b.image_url ? `
+          <div class="profile-photo-wrap">
+            <img src="${escHtml(b.image_url)}" alt="${escHtml(b.name)}" class="profile-photo">
+            <button class="btn--photo-delete" onclick="deletePhoto()" title="Remove photo">🗑️ Remove photo</button>
+          </div>` : `
+          <div class="profile-photo-wrap profile-photo-wrap--default">
+            <div class="profile-photo-default">${CAT_EMOJI[b.category] || '🏪'}</div>
+          </div>`
+        }
         ${b.story ? `
           <div style="margin-bottom:2rem">
             <div class="profile-label">Our Story</div>
@@ -391,7 +400,7 @@ async function deleteBusiness() {
   }
 }
 
-// ── Image upload ──────────────────────────────────────────────
+// ── Image upload & delete ─────────────────────────────────────
 async function uploadImage() {
   const file = document.getElementById('img-file').files[0];
   if (!file) { showToast('Please select an image file.', 'error'); return; }
@@ -405,6 +414,17 @@ async function uploadImage() {
   } else {
     const err = await res.json();
     showToast(err.detail || 'Upload failed.', 'error');
+  }
+}
+
+async function deletePhoto() {
+  if (!confirm('Remove this photo? The default category image will be shown instead.')) return;
+  const res = await fetch(`/api/businesses/${BIZ_ID}/image`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Photo removed.', 'success');
+    setTimeout(loadProfile, 500);
+  } else {
+    showToast('Failed to remove photo.', 'error');
   }
 }
 
